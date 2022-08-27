@@ -29,6 +29,8 @@
     "**/.vscode/**"
   ],
   "files.associations": {
-    "freertos.h": "c"
+    "freertos.h": "c",
+    "gpio.h": "c",
+    "gpio_cfg.h": "c"
   }
 }

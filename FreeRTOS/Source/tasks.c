@@ -2986,7 +2986,7 @@ BaseType_t xTaskIncrementTick( void )
                     prvAddTaskToReadyList( pxTCB );
 
 										#if ( (configUSE_PREEMPTION == 1 ) && (configUSE_EDF_SCHEDULER == 1 ) )
-												if( (listGET_LIST_ITEM_VALUE( &( ( pxTCB )->xStateListItem )) ) <= (listGET_LIST_ITEM_VALUE( &( ( pxCurrentTCB )->xStateListItem ) ) ) )
+												if( (listGET_LIST_ITEM_VALUE( &( ( pxTCB )->xStateListItem )) ) < (listGET_LIST_ITEM_VALUE( &( ( pxCurrentTCB )->xStateListItem ) ) ) )
                             {
                                 xSwitchRequired = pdTRUE;
                             }

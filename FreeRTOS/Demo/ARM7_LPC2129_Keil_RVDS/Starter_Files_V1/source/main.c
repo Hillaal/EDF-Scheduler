@@ -60,7 +60,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "lpc21xx.h"
-
+#include "queue.h"
 /* Peripheral includes. */
 #include "serial.h"
 #include "GPIO.h"
@@ -85,20 +85,31 @@ BaseType_t xTaskPeriodicCreate( TaskFunction_t pxTaskCode,
 
 /*--------------------   Tasks Prototypes   ----------------------*/
 
-void TSK_A (void *pvParameters);
-void TSK_B (void *pvParameters);
+void task_Button_1_Monitor(void *pvParameters);
+void task_Button_2_Monitor(void *pvParameters);
+void task_Periodic_Transmitter(void *pvParameters);
+void task_Uart_Receiver(void *pvParameters);
+
 
 /*--------------------   Global Variables   ----------------------*/
 
-#define CAPACITY 3 //cpu time in tick
-#define A_PERIOD 5 //task A period
-#define B_PERIOD 8 //task B period
+#define FALLING_EDGE	0
+#define RISING_EDGE	1
+#define NO_EDGE	2
+
+#define TASK_PERIOD__Button_1_Monitor 50 
+#define TASK_PERIOD__Button_2_Monitor 50 
+#define TASK_PERIOD__Periodic_Transmitter 100 
+#define TASK_PERIOD__Uart_Receiver 20 
 
 /*--------------------   Tasks handlers   ----------------------*/
 
-TaskHandle_t TSK_A_Handler = NULL;
-TaskHandle_t Toggle_Task_Handler = NULL;
-TaskHandle_t TSK_B_Handler = NULL;
+TaskHandle_t taskhandler_Button_1_Monitor = NULL;
+TaskHandle_t taskhandler_Button_2_Monitor = NULL;
+TaskHandle_t taskhandler_Periodic_Transmitter = NULL;
+TaskHandle_t taskhandler_Uart_Receiver = NULL;
+
+QueueHandle_t Queuehandle;
 
 /*-----------------------------------------------------------*/
 /*
@@ -112,15 +123,110 @@ static void prvSetupHardware( void );
 
 /*--------------------      Tasks      ----------------------*/
 
-void Toggle_Task( void * pvParameters )
-{
-   
+void task_Button_1_Monitor( void * pvParameters )
+{	
+	unsigned char button_1_state = 1;
+	unsigned char previous_button_1_state = 1;
+	const char *rising_edge_str1 = "Rising:Button1\n\n"; 
+	const char *falling_edge_str1 = "Falling:Button1\n\n";  
+	
+	TickType_t xLastWakeTime;
+
+	xLastWakeTime = xTaskGetTickCount();
+
     for( ;; )
     {
-			GPIO_write(PORT_0,PIN0,PIN_IS_HIGH);
-			vTaskDelay( 500 );
-			GPIO_write(PORT_0,PIN0,PIN_IS_LOW);
-			vTaskDelay( 500 );
+		vTaskDelayUntil(&xLastWakeTime,TASK_PERIOD__Button_1_Monitor);	
+		
+		button_1_state = GPIO_read(PORT_0,PIN0);
+		if(button_1_state != previous_button_1_state)
+		{
+			previous_button_1_state = button_1_state;
+
+			if(button_1_state)
+			{
+				xQueueSend(Queuehandle, &rising_edge_str1, 0);
+			}
+			else
+			{
+				xQueueSend(Queuehandle, &falling_edge_str1, 0);
+
+			}
+		}
+
+		
+	
+    }
+}
+
+void task_Button_2_Monitor( void * pvParameters )
+{
+	unsigned char button_2_state = 1;
+	unsigned char previous_button_2_state = 1;
+	const char *rising_edge_str2 = "Rising:Button2\n\n"; 
+	const char *falling_edge_str2 = "Falling:Button2\n\n"; 
+
+	TickType_t xLastWakeTime;
+	xLastWakeTime = xTaskGetTickCount();
+
+    for( ;; )
+    {
+		vTaskDelayUntil(&xLastWakeTime,TASK_PERIOD__Button_2_Monitor);	
+
+		button_2_state = GPIO_read(PORT_0,PIN1);
+
+		if(button_2_state != previous_button_2_state)
+		{
+			previous_button_2_state = button_2_state;
+
+			if(button_2_state)
+			{
+				xQueueSend(Queuehandle, &rising_edge_str2, 0);
+			}
+			else
+			{
+				xQueueSend(Queuehandle, &falling_edge_str2, 0);
+			}
+	
+    	}
+	}
+}
+
+void task_Periodic_Transmitter( void * pvParameters )
+{	
+	const char *periodic_str = "Periodic String\n\n"; 
+
+	TickType_t xLastWakeTime;
+	xLastWakeTime = xTaskGetTickCount();
+
+    for( ;; )
+    {
+		vTaskDelayUntil(&xLastWakeTime,TASK_PERIOD__Periodic_Transmitter);	
+
+		xQueueSend(Queuehandle, &periodic_str, 0);	
+	
+    }
+}
+
+void task_Uart_Receiver( void * pvParameters )
+{
+    char *recieved_str;
+	unsigned char counter = 0;
+
+	TickType_t xLastWakeTime;
+	xLastWakeTime = xTaskGetTickCount();
+
+    for( ;; )
+    {
+		vTaskDelayUntil(&xLastWakeTime,TASK_PERIOD__Uart_Receiver);	
+
+		if(xQueueReceive(Queuehandle, &recieved_str, 0) == pdTRUE){
+			for(counter = 0;recieved_str[counter] != '\0'; counter++ )
+			{
+				xSerialPutChar(recieved_str[counter]);
+			}
+		}
+		
     }
 }
 
@@ -138,32 +244,43 @@ int main( void )
 	prvSetupHardware();
 
 
-/*---------------    Tasks Creation    -----------------*/
+/*---------------    Queue and Tasks Creation    -----------------*/
 
-	/*
-xTaskPeriodicCreate( TSK_A,
-										( const char * ) "A",
-										configMINIMAL_STACK_SIZE,
-										( void * ) 0,
-										1,
-										NULL,
-										A_PERIOD );
+Queuehandle = xQueueCreate(3,sizeof(char *));
 
-xTaskPeriodicCreate( TSK_B,
-										( const char * ) "B",
-										configMINIMAL_STACK_SIZE,
-										( void * ) 0,
-										1,
-										NULL,
-										B_PERIOD );		*/	
+xTaskPeriodicCreate( task_Button_1_Monitor,
+					( const char * ) "Button_1_Monitor",
+					50,
+					( void * ) 0,
+					1,
+					NULL,
+					TASK_PERIOD__Button_1_Monitor );
 
-xTaskPeriodicCreate( Toggle_Task,
-										( const char * ) "Toggle",
-										configMINIMAL_STACK_SIZE,
-										( void * ) 0,
-										1,
-										NULL,
-										2000);	
+
+xTaskPeriodicCreate( task_Button_2_Monitor,
+					( const char * ) "Button_2_Monitor",
+					50,
+					( void * ) 0,
+					1,
+					NULL,
+					TASK_PERIOD__Button_2_Monitor );
+
+xTaskPeriodicCreate( task_Periodic_Transmitter,
+					( const char * ) "Periodic_Transmitter",
+					50,
+					( void * ) 0,
+					1,
+					NULL,
+					TASK_PERIOD__Periodic_Transmitter );
+
+
+xTaskPeriodicCreate( task_Uart_Receiver,
+					( const char * ) "Uart_Receiver",
+					50,
+					( void * ) 0,
+					1,
+					NULL,
+					TASK_PERIOD__Uart_Receiver );
 /*-----------------------------------------------------------*/
 
 	/* Now all the tasks have been started - start the scheduler.
