@@ -2986,7 +2986,10 @@ BaseType_t xTaskIncrementTick( void )
                     prvAddTaskToReadyList( pxTCB );
 
 										#if ( (configUSE_PREEMPTION == 1 ) && (configUSE_EDF_SCHEDULER == 1 ) )
-												xSwitchRequired = pdTRUE;
+												if( (listGET_LIST_ITEM_VALUE( &( ( pxTCB )->xStateListItem )) ) <= (listGET_LIST_ITEM_VALUE( &( ( pxCurrentTCB )->xStateListItem ) ) ) )
+                            {
+                                xSwitchRequired = pdTRUE;
+                            }
 										#endif
 										
                     /* A task being unblocked cannot cause an immediate
@@ -3620,7 +3623,6 @@ void vTaskMissedYield( void )
  */
 static portTASK_FUNCTION( prvIdleTask, pvParameters )
 {		
-		long long ccc = 0;
     /* Stop warnings. */
     ( void ) pvParameters;
 
