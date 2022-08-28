@@ -5,6 +5,7 @@
 .\bin\port.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
 .\bin\port.o: .\FreeRTOSConfig.h
 .\bin\port.o: C:\Keil_v5\ARM\INC\Philips\lpc21xx.h
+.\bin\port.o: .\Starter_Files_V1\header\GPIO.h
 .\bin\port.o: ..\..\Source\include\projdefs.h
 .\bin\port.o: ..\..\Source\include\portable.h
 .\bin\port.o: ..\..\Source\include\deprecated_definitions.h
